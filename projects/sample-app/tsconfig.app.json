@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/app",
+    "types": [],
+    "paths": {
+      "@/*": ["./src/app/*"],
+      "ngx-typesafe-routes": ["../../projects/typesafe-routes/src/public-api.ts"],
+      "ngx-typesafe-routes/*": ["../../projects/typesafe-routes/src/lib/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts"
+  ]
+}
