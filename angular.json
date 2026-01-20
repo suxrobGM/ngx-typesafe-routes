@@ -50,9 +50,7 @@
                 "input": "projects/sample-app/public"
               }
             ],
-            "styles": [
-              "projects/sample-app/src/styles.css"
-            ]
+            "styles": ["projects/sample-app/src/styles.css"]
           },
           "configurations": {
             "production": {

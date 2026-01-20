@@ -1,15 +1,9 @@
-import { Component } from '@angular/core';
+import { Component } from "@angular/core";
 
 @Component({
-  selector: 'lib-typesafe-routes',
+  selector: "lib-typesafe-routes",
   imports: [],
-  template: `
-    <p>
-      typesafe-routes works!
-    </p>
-  `,
+  template: ` <p>typesafe-routes works!</p> `,
   styles: ``,
 })
-export class TypesafeRoutes {
-
-}
+export class TypesafeRoutes {}

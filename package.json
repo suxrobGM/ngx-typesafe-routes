@@ -1,6 +1,7 @@
 {
   "name": "ngx-typesafe-routes",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "ng": "ng",
     "start": "ng serve sample-app",
@@ -8,7 +9,8 @@
     "build:lib": "ng build typesafe-routes",
     "watch:lib": "ng build typesafe-routes --watch --configuration development",
     "watch:app": "ng build sample-app --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\""
   },
   "dependencies": {
     "@angular/common": "^21.1.0",

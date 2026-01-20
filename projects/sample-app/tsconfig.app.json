@@ -9,10 +9,6 @@
       "ngx-typesafe-routes/*": ["../../projects/typesafe-routes/src/lib/*"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "src/**/*.spec.ts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
 }

@@ -1,6 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "rootDir": "./",
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -13,9 +14,7 @@
     "target": "ES2022",
     "module": "preserve",
     "paths": {
-      "typesafe-routes": [
-        "./dist/typesafe-routes"
-      ]
+      "typesafe-routes": ["./dist/typesafe-routes"]
     }
   },
   "angularCompilerOptions": {
