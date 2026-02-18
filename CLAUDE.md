@@ -5,7 +5,7 @@
 ## Architecture
 
 - **Monorepo**: Angular workspace with a library project and a sample app
-- **Library**: `projects/typesafe-routes/` — published to npm as `typesafe-routes`
+- **Library**: `projects/typesafe-routes/` — published to npm as `ngx-typesafe-routes`
 - **Sample app**: `src/` — for development and testing
 - **Build**: ng-packagr with partial compilation mode (`ng build typesafe-routes`)
 
