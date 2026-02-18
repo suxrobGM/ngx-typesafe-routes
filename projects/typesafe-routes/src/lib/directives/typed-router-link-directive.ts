@@ -4,13 +4,16 @@
  * A type-safe wrapper around Angular's RouterLink directive.
  * Delegates all DOM behavior (click handling, href, aria, prefetch)
  * to Angular's RouterLink via hostDirectives composition.
+ *
+ * Uses the same `[routerLink]` selector as Angular's built-in directive
+ * so existing templates require only an import change.
  */
 import { Directive, effect, inject, input } from "@angular/core";
 import { type Route, RouterLink } from "@angular/router";
 import { type RouteRegistry, type ValidPaths, buildPath } from "../types/route-registry";
 
 /**
- * Creates a TypedRouterLink directive for the given route registry.
+ * Creates a typed RouterLink directive for the given route registry.
  * The returned directive class can be imported in component `imports`.
  *
  * @example
@@ -20,7 +23,7 @@ import { type RouteRegistry, type ValidPaths, buildPath } from "../types/route-r
  * @Component({
  *   imports: [TypedRouterLink],
  *   template: `
- *     <a [typedLink]="'users/:userId'" [linkParams]="{ userId: '123' }">
+ *     <a [routerLink]="'users/:userId'" [routerLinkParams]="{ userId: '123' }">
  *       User 123
  *     </a>
  *   `
@@ -34,7 +37,7 @@ export function createTypedRouterLink<TRegistry extends RouteRegistry<ReadonlyAr
   type Paths = ValidPaths<TRegistry>;
 
   @Directive({
-    selector: "[typedLink]",
+    selector: "[routerLink]",
     standalone: true,
     hostDirectives: [
       {
@@ -56,13 +59,13 @@ export function createTypedRouterLink<TRegistry extends RouteRegistry<ReadonlyAr
   })
   class TypedRouterLinkDirective {
     /** @internal */
-    readonly _routerLink = inject(RouterLink);
+    public readonly _routerLink = inject(RouterLink);
 
     /** The typed route path to navigate to. */
-    readonly path = input.required<Paths>({ alias: "typedLink" });
+    public readonly path = input.required<Paths>({ alias: "routerLink" });
 
     /** Path parameters for substitution (e.g., `{ userId: '123' }`). */
-    readonly linkParams = input<Record<string, string>>();
+    public readonly linkParams = input<Record<string, string>>({ alias: "routerLinkParams" });
 
     constructor() {
       effect(() => {

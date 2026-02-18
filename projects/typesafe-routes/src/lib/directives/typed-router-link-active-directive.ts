@@ -5,13 +5,16 @@
  * Delegates all active-state tracking to Angular's RouterLinkActive
  * via hostDirectives composition, ensuring correct reactive updates
  * on navigation events.
+ *
+ * Uses the same `[routerLinkActive]` selector as Angular's built-in directive
+ * so existing templates require only an import change.
  */
 import { Directive, effect, inject, input } from "@angular/core";
 import { type Route, RouterLinkActive } from "@angular/router";
 import { type RouteRegistry } from "../types/route-registry";
 
 /**
- * Creates a TypedRouterLinkActive directive for the given route registry.
+ * Creates a typed RouterLinkActive directive for the given route registry.
  *
  * @example
  * ```typescript
@@ -20,8 +23,8 @@ import { type RouteRegistry } from "../types/route-registry";
  * @Component({
  *   imports: [TypedRouterLink, TypedRouterLinkActive],
  *   template: `
- *     <a [typedLink]="'users'"
- *        [typedLinkActive]="'active'"
+ *     <a [routerLink]="'users'"
+ *        [routerLinkActive]="'active'"
  *        [routerLinkActiveOptions]="{ exact: false }">
  *       Users
  *     </a>
@@ -34,7 +37,7 @@ export function createTypedRouterLinkActive<TRegistry extends RouteRegistry<Read
   _registry: TRegistry,
 ) {
   @Directive({
-    selector: "[typedLinkActive]",
+    selector: "[routerLinkActive]",
     standalone: true,
     hostDirectives: [
       {
@@ -49,7 +52,9 @@ export function createTypedRouterLinkActive<TRegistry extends RouteRegistry<Read
     public readonly _rla = inject(RouterLinkActive);
 
     /** CSS class(es) to add when the route is active. */
-    public readonly activeClass = input.required<string | string[]>({ alias: "typedLinkActive" });
+    public readonly activeClass = input.required<string | string[]>({
+      alias: "routerLinkActive",
+    });
 
     constructor() {
       effect(() => {

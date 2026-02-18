@@ -1,5 +1,5 @@
 /*
- * Public API Surface of typesafe-routes
+ * Public API Surface of ngx-typesafe-routes
  */
 
 // Route registry and path utilities
@@ -11,45 +11,24 @@ export {
   validateParams,
 } from "./lib/types/route-registry";
 
-export type {
-  ExtractAllPaths,
-  NavigateOptions,
-  RoutePathMap,
-  RouteRegistry,
-  ValidPaths,
-} from "./lib/types/route-registry";
+export type { RouteRegistry, ValidPaths } from "./lib/types/route-registry";
 
 // Core type utilities
-export type {
-  ExtractPathParams,
-  HasParams,
-  JoinPath,
-  PathParams,
-  QueryParamValue,
-} from "./lib/types/route-types";
+export type { PathParams, QueryParamValue } from "./lib/types/route-types";
 
-// Navigation functions
-export {
-  typedCreateUrl,
-  typedCreateUrlTree,
-  typedNavigator,
-} from "./lib/navigation/typed-navigation";
+// Typed router (DI provider + inject function factory)
+export { createTypedRouter } from "./lib/navigation/typed-navigation";
 
-// Signal inputs for withComponentInputBinding()
+// Route param input (mirrors Angular's input() API for route params)
+export { input } from "./lib/inputs/route-inputs";
+
+// Query param inputs
 export {
   queryParam,
   queryParamBoolean,
   queryParamDefault,
   queryParamNumber,
   queryParamTransform,
-  routeData,
-  routeDataOptional,
-  routeParam,
-  routeParamNumber,
-  routeParamOptional,
-  routeParamTransform,
-  routeParamTransformOptional,
-  routeParamValidated,
 } from "./lib/inputs/route-inputs";
 
 // Directives (typed wrappers over RouterLink/RouterLinkActive)

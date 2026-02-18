@@ -1,15 +1,15 @@
 # ngx-typesafe-routes
 
-**Compile-time type-safe routing for Angular.** Invalid paths, missing params, and wrong param names become red squiggles in your IDE - before you even run the app.
+**Compile-time type-safe routing for Angular.** Invalid paths, missing params, and wrong param names become red squiggles in your IDE — before you even run the app.
 
 ```typescript
-nav.navigate("users/:userId", { params: { userId: "42" } }); // OK
-nav.navigate("invalid/path");                                  // TS error: not assignable to ValidPaths
-nav.navigate("users/:userId");                                 // TS error: options required
-nav.navigate("users/:userId", { params: { wrong: "42" } });   // TS error: wrong param name
+router.navigate("users/:userId", { params: { userId: "42" } }); // OK
+router.navigate("invalid/path"); // TS error: not assignable to ValidPaths
+router.navigate("users/:userId"); // TS error: options required
+router.navigate("users/:userId", { params: { wrong: "42" } }); // TS error: wrong param name
 ```
 
-**Zero runtime overhead.** Standard Angular routing. Signal-first. No services - just functions.
+**Zero runtime overhead.** Standard Angular routing. Signal-first. Matches Angular's API.
 
 ## Install
 
@@ -21,11 +21,16 @@ npm install ngx-typesafe-routes
 
 ## Setup (3 steps)
 
-**1. Define routes** - add `as const satisfies Routes` to preserve literal types:
+**1. Define routes** — add `as const satisfies Routes` to preserve literal types:
 
 ```typescript
 // app.routes.ts
-import { registerRoutes } from "ngx-typesafe-routes";
+import {
+  createTypedRouter,
+  createTypedRouterLink,
+  createTypedRouterLinkActive,
+  registerRoutes,
+} from "ngx-typesafe-routes";
 
 const routes = [
   { path: "", component: HomeComponent },
@@ -35,24 +40,29 @@ const routes = [
 ] as const satisfies Routes;
 
 export const appRouter = registerRoutes(routes);
+export const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
+export const TypedRouterLink = createTypedRouterLink(appRouter);
+export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 ```
 
-**2. Provide** - pass `appRouter.routes` to Angular's router:
+**2. Provide** — pass `appRouter.routes` to Angular's router and register the typed router:
 
 ```typescript
 // app.config.ts
-provideRouter(appRouter.routes, withComponentInputBinding());
+providers: [provideRouter(appRouter.routes, withComponentInputBinding()), provideTypedRouter];
 ```
 
-**3. Use** - every path and param is now type-checked:
+**3. Use** — every path and param is now type-checked:
 
 ```typescript
+import { injectTypedRouter } from './app.routes';
+
 @Component({...})
 export class MyComponent {
-  private nav = typedNavigator(appRouter);
+  private router = injectTypedRouter();
 
   goToUser(id: string) {
-    this.nav.navigate("users/:userId", { params: { userId: id } });
+    this.router.navigate("users/:userId", { params: { userId: id } });
   }
 }
 ```
@@ -61,70 +71,65 @@ export class MyComponent {
 
 ## Navigation
 
-`typedNavigator()` captures `inject(Router)` at construction time. Methods work anywhere - event handlers, callbacks, etc.
+`injectTypedRouter()` returns a typed router object. Call it in an injection context (field initializer, constructor). Methods work anywhere — event handlers, callbacks, etc.
 
 ```typescript
-private nav = typedNavigator(appRouter);
+private router = injectTypedRouter();
 
-this.nav.navigate("users/:userId", { params: { userId: "42" } });
-this.nav.navigateByUrl("users/:userId", { params: { userId: "42" }, queryParams: { tab: "posts" } });
-this.nav.createUrlTree("auth/login");           // UrlTree for guards
-this.nav.createUrl("users/:userId", { params: { userId: "42" } }); // "/users/42"
-this.nav.isActive("users");                     // boolean
-```
-
-**For guards** - standalone functions that work in any injection context:
-
-```typescript
-export const authGuard: CanActivateFn = () => {
-  return inject(AuthService).isLoggedIn() || typedCreateUrlTree(appRouter, "auth/login");
-};
+this.router.navigate("users/:userId", { params: { userId: "42" } });
+this.router.navigateByUrl("users/:userId", { params: { userId: "42" }, queryParams: { tab: "posts" } });
+this.router.createUrlTree("auth/login");            // UrlTree for guards
+this.router.createUrl("users/:userId", { params: { userId: "42" } }); // "/users/42"
+this.router.isActive("users");                      // boolean
+this.router.url;                                     // current URL
+this.router.events;                                  // router events observable
 ```
 
 ## Template Directives
 
-Thin wrappers over `RouterLink` / `RouterLinkActive`. All original inputs (`queryParams`, `fragment`, `target`, etc.) still work.
+Thin wrappers over `RouterLink` / `RouterLinkActive` using the same selectors. All original inputs (`queryParams`, `fragment`, `target`, etc.) still work.
 
 ```typescript
-// typed-router.ts - create once, import everywhere
+// app.routes.ts — create once, import everywhere
 export const TypedRouterLink = createTypedRouterLink(appRouter);
 export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 ```
 
 ```html
-<a [typedLink]="'users'" [typedLinkActive]="'active'">Users</a>
+<a [routerLink]="'users'" [routerLinkActive]="'active'">Users</a>
 
-<a [typedLink]="'users/:userId'"
-   [linkParams]="{ userId: user.id }"
-   [typedLinkActive]="'active'"
-   [routerLinkActiveOptions]="{ exact: true }">
+<a
+  [routerLink]="'users/:userId'"
+  [routerLinkParams]="{ userId: user.id }"
+  [routerLinkActive]="'active'"
+  [routerLinkActiveOptions]="{ exact: true }"
+>
   {{ user.name }}
 </a>
 
-<a [typedLink]="'nonexistent'">Compile error!</a>
+<a [routerLink]="'nonexistent'">Compile error!</a>
 ```
 
 ## Signal Inputs
 
-Semantic wrappers for `withComponentInputBinding()`. Angular binds route/query params to fields by name.
+Route parameter inputs that mirror Angular's `input()` / `input.required()` API. Import `input` from the library instead of `@angular/core` for route params.
 
 ```typescript
+import { input, queryParam, queryParamNumber, queryParamBoolean } from "ngx-typesafe-routes";
+
 @Component({...})
 export class UserComponent {
-  userId = routeParam();                // InputSignal<string> - required
-  id     = routeParamNumber();          // auto-parsed to number
-  tab    = queryParamDefault("overview"); // defaults to 'overview'
-  debug  = queryParamBoolean(false);    // parses 'true', '1', 'yes'
-  user   = routeData<User>();           // resolver data
+  userId = input.required();                  // InputSignal<string> — required
+  tab    = input("overview");                 // optional with default
+  id     = input.number();                    // auto-parsed to number
+  slug   = input.transform(v => v.toUpperCase()); // custom transform
+  code   = input.validated(v => v.length === 6);   // validated
+
+  // Query params
+  page   = queryParamNumber(1);               // numeric query param
+  debug  = queryParamBoolean(false);          // boolean query param
+  q      = queryParam();                      // optional string query param
 }
-```
-
-**Transforms and validation:**
-
-```typescript
-productId = routeParamTransform(v => parseInt(v, 10));
-slug = routeParamValidated(v => /^[a-z0-9-]+$/.test(v), "Invalid slug");
-sort = queryParamTransform(v => (v === "desc" ? "desc" : "asc") as "asc" | "desc", "asc");
 ```
 
 ## Typed Guards

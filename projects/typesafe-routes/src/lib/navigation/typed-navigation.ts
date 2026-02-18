@@ -1,29 +1,39 @@
 /**
- * Typed Navigation Functions
+ * Typed Navigation
  *
- * Functional API for type-safe navigation. Replaces injectable services
- * with pure functions that work in Angular's injection context.
+ * Provides `createTypedRouter()` — a factory that returns a DI provider
+ * and an inject function, eliminating the need to import the route registry
+ * in every component.
  *
  * Usage:
  * ```typescript
- * @Component({...})
- * class MyComponent {
- *   private nav = typedNavigator(appRouter);
+ * // app.routes.ts (one-time setup)
+ * export const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
  *
- *   goToUser(id: string) {
- *     this.nav.navigate('users/:userId', { params: { userId: id } });
- *   }
- * }
+ * // app.config.ts
+ * providers: [provideRouter(appRouter.routes), provideTypedRouter]
+ *
+ * // any component
+ * private router = injectTypedRouter();
+ * this.router.navigate('users/:userId', { params: { userId: '42' } });
  * ```
  */
-import { inject } from "@angular/core";
+import {
+  type EnvironmentProviders,
+  InjectionToken,
+  inject,
+  makeEnvironmentProviders,
+} from "@angular/core";
 import {
   type NavigationExtras,
   type Route,
   Router,
+  type Event as RouterEvent,
+  type RouterState,
   type UrlCreationOptions,
   type UrlTree,
 } from "@angular/router";
+import type { Observable } from "rxjs";
 import { type RouteRegistry, type ValidPaths, buildPath, buildUrl } from "../types/route-registry";
 import type { HasParams, PathParams, QueryParamValue } from "../types/route-types";
 
@@ -67,47 +77,21 @@ function extractArgs(args: [string, any?]) {
 }
 
 // =============================================================================
-// Primary API: typedNavigator
+// Typed Router Object
 // =============================================================================
 
-/**
- * Creates a typed navigation object. Must be called from an injection context
- * (component constructor, field initializer, or `runInInjectionContext`).
- * The returned methods can be called from any context (event handlers, etc.).
- *
- * @example
- * ```typescript
- * @Component({...})
- * class UserListComponent {
- *   private nav = typedNavigator(appRouter);
- *
- *   goToUser(id: string) {
- *     this.nav.navigate('users/:userId', { params: { userId: id } });
- *   }
- *
- *   goHome() {
- *     this.nav.navigate('');
- *   }
- * }
- * ```
- */
-export function typedNavigator<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>(
+function buildTypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>(
   _registry: TRegistry,
+  router: Router,
 ) {
-  const router = inject(Router);
-
   return {
-    /**
-     * Navigate to a typed route path.
-     */
+    /** Navigate to a typed route path. */
     navigate<P extends ValidPaths<TRegistry>>(...args: NavigateArgs<P>): Promise<boolean> {
       const { path, params, extras } = extractArgs(args);
       return router.navigate([buildPath(path, params)], extras);
     },
 
-    /**
-     * Navigate by full URL string.
-     */
+    /** Navigate by full URL string. */
     navigateByUrl<P extends ValidPaths<TRegistry>>(...args: NavigateArgs<P>): Promise<boolean> {
       const [pathArg, options] = args as [string, any?];
       const params = options?.params ?? {};
@@ -116,27 +100,19 @@ export function typedNavigator<TRegistry extends RouteRegistry<ReadonlyArray<Rou
       return router.navigateByUrl(buildUrl(pathArg, params, queryParams), extras);
     },
 
-    /**
-     * Create a UrlTree for the typed path.
-     * Useful for returning from guards.
-     */
+    /** Create a UrlTree for the typed path. Useful for returning from guards. */
     createUrlTree<P extends ValidPaths<TRegistry>>(...args: NavigateArgs<P>): UrlTree {
       const { path, params, extras } = extractArgs(args);
       return router.createUrlTree([buildPath(path, params)], extras as UrlCreationOptions);
     },
 
-    /**
-     * Create a full URL string for the typed path.
-     */
+    /** Create a full URL string for the typed path. */
     createUrl<P extends ValidPaths<TRegistry>>(...args: NavigateArgs<P>): string {
       const { path, params, queryParams } = extractArgs(args);
       return buildUrl(path, params, queryParams);
     },
 
-    /**
-     * Check if a typed path is currently active.
-     * Uses Angular's native `router.isActive()` for correct matching.
-     */
+    /** Check if a typed path is currently active. */
     isActive<P extends ValidPaths<TRegistry>>(path: P, exact: boolean = false): boolean {
       const urlTree = router.parseUrl("/" + path);
       return router.isActive(urlTree, {
@@ -152,6 +128,26 @@ export function typedNavigator<TRegistry extends RouteRegistry<ReadonlyArray<Rou
       return router.url;
     },
 
+    /** Router events observable. */
+    get events(): Observable<RouterEvent> {
+      return router.events;
+    },
+
+    /** The current router state. */
+    get routerState(): RouterState {
+      return router.routerState;
+    },
+
+    /** Parse a URL string into a UrlTree. */
+    parseUrl(url: string): UrlTree {
+      return router.parseUrl(url);
+    },
+
+    /** Serialize a UrlTree into a URL string. */
+    serializeUrl(url: UrlTree): string {
+      return router.serializeUrl(url);
+    },
+
     /** Access to the underlying Angular Router for advanced scenarios. */
     get angularRouter(): Router {
       return router;
@@ -159,47 +155,60 @@ export function typedNavigator<TRegistry extends RouteRegistry<ReadonlyArray<Rou
   };
 }
 
+/** The return type of the typed router object. */
+type TypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> = ReturnType<
+  typeof buildTypedRouter<TRegistry>
+>;
+
 // =============================================================================
-// Standalone Functions (for guards and injection contexts)
+// Primary API: createTypedRouter
 // =============================================================================
 
 /**
- * Creates a UrlTree for a typed path. Must be called from an injection context.
- * Primary use case: returning redirects from `CanActivateFn` guards.
+ * Creates a typed router factory for the given route registry.
+ * Call once at module level to get a DI provider and an inject function.
  *
  * @example
  * ```typescript
- * export const authGuard: CanActivateFn = () => {
- *   return inject(AuthService).isLoggedIn()
- *     || typedCreateUrlTree(appRouter, 'auth/login');
- * };
+ * // app.routes.ts
+ * const routes = [...] as const satisfies Routes;
+ * export const appRouter = registerRoutes(routes);
+ * export const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
+ *
+ * // app.config.ts
+ * providers: [
+ *   provideRouter(appRouter.routes, withComponentInputBinding()),
+ *   provideTypedRouter,
+ * ]
+ *
+ * // any.component.ts
+ * import { injectTypedRouter } from './app.routes';
+ *
+ * @Component({...})
+ * class UserListComponent {
+ *   private router = injectTypedRouter();
+ *
+ *   goToUser(id: string) {
+ *     this.router.navigate('users/:userId', { params: { userId: id } });
+ *   }
+ * }
  * ```
  */
-export function typedCreateUrlTree<
-  TRegistry extends RouteRegistry<ReadonlyArray<Route>>,
-  P extends ValidPaths<TRegistry>,
->(_registry: TRegistry, ...args: NavigateArgs<P>): UrlTree {
-  const router = inject(Router);
-  const { path, params, extras } = extractArgs(args);
-  return router.createUrlTree([buildPath(path, params)], extras as UrlCreationOptions);
-}
+export function createTypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>(
+  registry: TRegistry,
+): {
+  provideTypedRouter: EnvironmentProviders;
+  injectTypedRouter: () => TypedRouter<TRegistry>;
+} {
+  const TOKEN = new InjectionToken<TypedRouter<TRegistry>>("TypedRouter");
 
-/**
- * Creates a full URL string for a typed path. Pure function — no DI required.
- *
- * @example
- * ```typescript
- * const url = typedCreateUrl(appRouter, 'users/:userId', {
- *   params: { userId: '42' },
- *   queryParams: { tab: 'posts' }
- * });
- * // → "/users/42?tab=posts"
- * ```
- */
-export function typedCreateUrl<
-  TRegistry extends RouteRegistry<ReadonlyArray<Route>>,
-  P extends ValidPaths<TRegistry>,
->(_registry: TRegistry, ...args: NavigateArgs<P>): string {
-  const { path, params, queryParams } = extractArgs(args);
-  return buildUrl(path, params, queryParams);
+  return {
+    provideTypedRouter: makeEnvironmentProviders([
+      {
+        provide: TOKEN,
+        useFactory: () => buildTypedRouter(registry, inject(Router)),
+      },
+    ]),
+    injectTypedRouter: (): TypedRouter<TRegistry> => inject(TOKEN),
+  };
 }

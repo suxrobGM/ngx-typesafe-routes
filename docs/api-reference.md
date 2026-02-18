@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for `typesafe-routes`.
+Complete API documentation for `ngx-typesafe-routes`.
 
 ---
 
@@ -11,7 +11,7 @@ Complete API documentation for `typesafe-routes`.
 Creates a typed route registry. The registry is a plain object holding your routes with preserved literal types.
 
 ```typescript
-import { registerRoutes } from "typesafe-routes";
+import { registerRoutes } from "ngx-typesafe-routes";
 
 const routes = [
   { path: "", component: HomeComponent },
@@ -42,7 +42,7 @@ export const appRouter = registerRoutes(routes);
 Substitutes `:param` segments in a path and returns an absolute URL path.
 
 ```typescript
-import { buildPath } from "typesafe-routes";
+import { buildPath } from "ngx-typesafe-routes";
 
 buildPath("users/:userId", { userId: "42" });
 // => "/users/42"
@@ -68,7 +68,7 @@ buildPath("", {});
 Builds a full URL including query parameters.
 
 ```typescript
-import { buildUrl } from "typesafe-routes";
+import { buildUrl } from "ngx-typesafe-routes";
 
 buildUrl("users/:userId", { userId: "42" }, { tab: "posts", page: "1" });
 // => "/users/42?tab=posts&page=1"
@@ -95,7 +95,7 @@ buildUrl("users/:userId", { userId: "42" }, { debug: null });
 Runtime validation that all required parameters are present and non-null.
 
 ```typescript
-import { validateParams } from "typesafe-routes";
+import { validateParams } from "ngx-typesafe-routes";
 
 validateParams("users/:userId", { userId: "42" });
 // => true
@@ -121,7 +121,7 @@ validateParams("users/:userId", { userId: undefined });
 Extracts parameter names from a path at runtime.
 
 ```typescript
-import { getParamNames } from "typesafe-routes";
+import { getParamNames } from "ngx-typesafe-routes";
 
 getParamNames("users/:userId/posts/:postId");
 // => ['userId', 'postId']
@@ -140,43 +140,51 @@ getParamNames("users");
 
 ## Navigation
 
-### `typedNavigator(registry)`
+### `createTypedRouter(registry)`
 
-Creates a typed navigation object. Must be called from an **injection context** (component constructor, field initializer, or `runInInjectionContext`). The returned methods capture `inject(Router)` and can be called from any context.
+Creates a typed router factory. Call once at module level to get a DI provider and an inject function. This eliminates the need to import the registry in every component.
 
 ```typescript
-import { typedNavigator } from 'typesafe-routes';
+// app.routes.ts
+import { registerRoutes, createTypedRouter } from "ngx-typesafe-routes";
 
-@Component({...})
-export class MyComponent {
-  private nav = typedNavigator(appRouter);
-
-  goToUser(id: string) {
-    this.nav.navigate('users/:userId', { params: { userId: id } });
-  }
-
-  goHome() {
-    this.nav.navigate('');
-  }
-}
+const routes = [...] as const satisfies Routes;
+export const appRouter = registerRoutes(routes);
+export const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
 ```
 
 **Parameters:**
 
-- `_registry: TRegistry` — A route registry (used only for type inference)
+- `registry: TRegistry` — A route registry created by `registerRoutes()`
 
-**Returns:** An object with the following methods:
+**Returns:** An object with:
 
-#### `.navigate(path, options?)`
+- `provideTypedRouter: EnvironmentProviders` — Add to your app providers array
+- `injectTypedRouter: () => TypedRouter` — Call in injection context to get the typed router
+
+#### Setup
+
+```typescript
+// app.config.ts
+providers: [provideRouter(appRouter.routes, withComponentInputBinding()), provideTypedRouter];
+```
+
+#### The Typed Router Object
+
+`injectTypedRouter()` returns an object with the following methods and properties:
+
+##### `.navigate(path, options?)`
 
 Navigates using `router.navigate([resolvedPath], extras)`.
 
 ```typescript
+private router = injectTypedRouter();
+
 // No params required
-nav.navigate("users");
+router.navigate("users");
 
 // Params required
-nav.navigate("users/:userId", {
+router.navigate("users/:userId", {
   params: { userId: "42" },
   queryParams: { tab: "posts" },
   extras: { replaceUrl: true },
@@ -185,12 +193,12 @@ nav.navigate("users/:userId", {
 
 **Returns:** `Promise<boolean>`
 
-#### `.navigateByUrl(path, options?)`
+##### `.navigateByUrl(path, options?)`
 
 Navigates using `router.navigateByUrl(fullUrl, extras)`. Query params are encoded in the URL string.
 
 ```typescript
-nav.navigateByUrl("users/:userId", {
+router.navigateByUrl("users/:userId", {
   params: { userId: "42" },
   queryParams: { tab: "posts" },
 });
@@ -198,23 +206,23 @@ nav.navigateByUrl("users/:userId", {
 
 **Returns:** `Promise<boolean>`
 
-#### `.createUrlTree(path, options?)`
+##### `.createUrlTree(path, options?)`
 
 Creates an Angular `UrlTree`. Useful for returning from guards.
 
 ```typescript
-const tree = nav.createUrlTree('auth/login');
-const tree = nav.createUrlTree('users/:userId', { params: { userId: '42' } });
+const tree = router.createUrlTree("auth/login");
+const tree = router.createUrlTree("users/:userId", { params: { userId: "42" } });
 ```
 
 **Returns:** `UrlTree`
 
-#### `.createUrl(path, options?)`
+##### `.createUrl(path, options?)`
 
 Builds a URL string using `buildUrl()`.
 
 ```typescript
-const url = nav.createUrl("users/:userId", {
+const url = router.createUrl("users/:userId", {
   params: { userId: "42" },
   queryParams: { tab: "posts" },
 });
@@ -223,15 +231,15 @@ const url = nav.createUrl("users/:userId", {
 
 **Returns:** `string`
 
-#### `.isActive(path, exact?)`
+##### `.isActive(path, exact?)`
 
 Checks if a path is currently active using Angular's `router.isActive()`.
 
 ```typescript
-if (nav.isActive("users")) {
+if (router.isActive("users")) {
   /* on any users page */
 }
-if (nav.isActive("users/:userId", true)) {
+if (router.isActive("users/:userId", true)) {
   /* exact match only */
 }
 ```
@@ -243,68 +251,29 @@ if (nav.isActive("users/:userId", true)) {
 
 **Returns:** `boolean`
 
-#### `.url`
+##### `.url`
 
 The current URL string (from `router.url`).
 
-#### `.angularRouter`
+##### `.events`
+
+Router events observable (from `router.events`).
+
+##### `.routerState`
+
+The current router state (from `router.routerState`).
+
+##### `.parseUrl(url)`
+
+Parse a URL string into a `UrlTree`.
+
+##### `.serializeUrl(url)`
+
+Serialize a `UrlTree` into a URL string.
+
+##### `.angularRouter`
 
 The underlying Angular `Router` instance for advanced scenarios.
-
----
-
-### `typedCreateUrlTree(registry, path, options?)`
-
-Creates a `UrlTree` for a typed path. Must be called from an **injection context**. Primary use case: returning redirects from `CanActivateFn` guards.
-
-```typescript
-import { typedCreateUrlTree } from "typesafe-routes";
-
-export const authGuard: CanActivateFn = () => {
-  return inject(AuthService).isLoggedIn() || typedCreateUrlTree(appRouter, "auth/login");
-};
-
-export const adminGuard: CanActivateFn = () => {
-  return (
-    inject(AuthService).isAdmin() ||
-    typedCreateUrlTree(appRouter, "users/:userId", {
-      params: { userId: "me" },
-    })
-  );
-};
-```
-
-**Parameters:**
-
-- `_registry: TRegistry` — Route registry (type inference only)
-- `path: P` — A valid path
-- `options?` — Object with `params`, `queryParams`, `extras`
-
-**Returns:** `UrlTree`
-
----
-
-### `typedCreateUrl(registry, path, options?)`
-
-Creates a URL string for a typed path. **Pure function** — no injection context required.
-
-```typescript
-import { typedCreateUrl } from "typesafe-routes";
-
-const url = typedCreateUrl(appRouter, "users/:userId", {
-  params: { userId: "42" },
-  queryParams: { tab: "posts" },
-});
-// => "/users/42?tab=posts"
-```
-
-**Parameters:**
-
-- `_registry: TRegistry` — Route registry (type inference only)
-- `path: P` — A valid path
-- `options?` — Object with `params`, `queryParams`
-
-**Returns:** `string`
 
 ---
 
@@ -312,24 +281,24 @@ const url = typedCreateUrl(appRouter, "users/:userId", {
 
 ### `createTypedRouterLink(registry)`
 
-Creates a typed directive wrapping Angular's `RouterLink` via `hostDirectives`. The directive validates paths at compile time while delegating all DOM behavior (click handling, href, aria attributes, prefetching) to Angular's built-in `RouterLink`.
+Creates a typed directive wrapping Angular's `RouterLink` via `hostDirectives`. Uses the `[routerLink]` selector — same as Angular's built-in directive. The directive validates paths at compile time while delegating all DOM behavior (click handling, href, aria attributes, prefetching) to Angular's built-in `RouterLink`.
 
 ```typescript
-// typed-router.ts — create once, import everywhere
-import { createTypedRouterLink } from "typesafe-routes";
+// app.routes.ts — create once, import everywhere
+import { createTypedRouterLink } from "ngx-typesafe-routes";
 import { appRouter } from "./app.routes";
 
 export const TypedRouterLink = createTypedRouterLink(appRouter);
 ```
 
-**Selector:** `[typedLink]`
+**Selector:** `[routerLink]`
 
 **Inputs:**
 
 | Input                   | Type                     | Description                        |
 | ----------------------- | ------------------------ | ---------------------------------- |
-| `[typedLink]`           | `ValidPaths<TRegistry>`  | The typed route path (required)    |
-| `[linkParams]`          | `Record<string, string>` | Path parameters for substitution   |
+| `[routerLink]`          | `ValidPaths<TRegistry>`  | The typed route path (required)    |
+| `[routerLinkParams]`    | `Record<string, string>` | Path parameters for substitution   |
 | `[queryParams]`         | `Params`                 | Query parameters (from RouterLink) |
 | `[fragment]`            | `string`                 | URL fragment (from RouterLink)     |
 | `[queryParamsHandling]` | `QueryParamsHandling`    | How to handle query params         |
@@ -345,38 +314,38 @@ export const TypedRouterLink = createTypedRouterLink(appRouter);
 
 ```html
 <!-- Static path, no params -->
-<a [typedLink]="'users'">Users</a>
+<a [routerLink]="'users'">Users</a>
 
 <!-- Path with params -->
-<a [typedLink]="'users/:userId'" [linkParams]="{ userId: user.id }"> {{ user.name }} </a>
+<a [routerLink]="'users/:userId'" [routerLinkParams]="{ userId: user.id }"> {{ user.name }} </a>
 
 <!-- With query params and fragment -->
-<a [typedLink]="'users'" [queryParams]="{ page: '2' }" fragment="top"> Users Page 2 </a>
+<a [routerLink]="'users'" [queryParams]="{ page: '2' }" fragment="top"> Users Page 2 </a>
 
 <!-- Invalid path = TS error -->
-<a [typedLink]="'nonexistent'">Error!</a>
+<a [routerLink]="'nonexistent'">Error!</a>
 ```
 
 ---
 
 ### `createTypedRouterLinkActive(registry)`
 
-Creates a typed directive wrapping Angular's `RouterLinkActive` via `hostDirectives`. Adds CSS class(es) when the associated route is active.
+Creates a typed directive wrapping Angular's `RouterLinkActive` via `hostDirectives`. Uses the `[routerLinkActive]` selector — same as Angular's built-in directive. Adds CSS class(es) when the associated route is active.
 
 ```typescript
-import { createTypedRouterLinkActive } from "typesafe-routes";
+import { createTypedRouterLinkActive } from "ngx-typesafe-routes";
 import { appRouter } from "./app.routes";
 
 export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 ```
 
-**Selector:** `[typedLinkActive]`
+**Selector:** `[routerLinkActive]`
 
 **Inputs:**
 
 | Input                       | Type                   | Description                      |
 | --------------------------- | ---------------------- | -------------------------------- |
-| `[typedLinkActive]`         | `string \| string[]`   | CSS class(es) to add when active |
+| `[routerLinkActive]`        | `string \| string[]`   | CSS class(es) to add when active |
 | `[routerLinkActiveOptions]` | `IsActiveMatchOptions` | Active matching options          |
 
 **Outputs:**
@@ -389,13 +358,13 @@ export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 
 ```html
 <!-- Single class -->
-<a [typedLink]="'users'" [typedLinkActive]="'active'">Users</a>
+<a [routerLink]="'users'" [routerLinkActive]="'active'">Users</a>
 
 <!-- Multiple classes -->
-<a [typedLink]="'users'" [typedLinkActive]="['active', 'highlighted']">Users</a>
+<a [routerLink]="'users'" [routerLinkActive]="['active', 'highlighted']">Users</a>
 
 <!-- Exact matching -->
-<a [typedLink]="'users'" [typedLinkActive]="'active'" [routerLinkActiveOptions]="{ exact: true }">
+<a [routerLink]="'users'" [routerLinkActive]="'active'" [routerLinkActiveOptions]="{ exact: true }">
   Users
 </a>
 ```
@@ -404,70 +373,65 @@ export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 
 ## Signal Inputs
 
-All input factories are designed for use with `withComponentInputBinding()`. Angular binds route params, query params, and resolver data to component inputs by matching the **field name** to the param/data key.
+### Route Params — `input`
+
+The `input` object mirrors Angular's `input()` / `input.required()` API for route parameter binding. Import from `ngx-typesafe-routes` instead of `@angular/core` for route params.
+
+Requires `withComponentInputBinding()` in your router config. Angular binds route params to component inputs by matching the **field name** to the param name.
 
 ```typescript
 // app.config.ts — required for signal inputs to work
 provideRouter(appRouter.routes, withComponentInputBinding());
 ```
 
-### Route Params
-
-#### `routeParam()`
+#### `input.required()`
 
 Creates a required string input for a route parameter.
 
 ```typescript
+import { input } from "ngx-typesafe-routes";
+
 // Route: { path: 'users/:userId', component: UserComponent }
 @Component({...})
 class UserComponent {
-  userId = routeParam(); // InputSignal<string>
+  userId = input.required(); // InputSignal<string>
 }
 ```
 
-#### `routeParamOptional(defaultValue)`
+#### `input(defaultValue)`
 
 Creates an optional string input with a default value.
 
 ```typescript
-tab = routeParamOptional("overview"); // InputSignal<string>, defaults to 'overview'
+tab = input("overview"); // InputSignal<string>, defaults to 'overview'
 ```
 
-#### `routeParamNumber()`
+#### `input.number()`
 
 Creates a required input that auto-parses to `number`. Throws `Error` if the value is not numeric.
 
 ```typescript
-userId = routeParamNumber(); // InputSignalWithTransform<number, string>
+userId = input.number(); // InputSignalWithTransform<number, string>
 ```
 
-#### `routeParamTransform(transform)`
+#### `input.transform(transform)`
 
 Creates a required input with a custom transform function.
 
 ```typescript
-userId = routeParamTransform((v) => parseInt(v, 10));
+userId = input.transform((v) => parseInt(v, 10));
 // InputSignalWithTransform<number, string>
 
-status = routeParamTransform((v) => v as "active" | "inactive");
+status = input.transform((v) => v as "active" | "inactive");
 // InputSignalWithTransform<'active' | 'inactive', string>
 ```
 
-#### `routeParamTransformOptional(defaultValue, transform)`
-
-Creates an optional input with a transform and default.
-
-```typescript
-page = routeParamTransformOptional(1, (v) => (v ? parseInt(v, 10) : 1));
-// InputSignalWithTransform<number, string | undefined>
-```
-
-#### `routeParamValidated(validate, errorMessage?)`
+#### `input.validated(validate, errorMessage?)`
 
 Creates a required input that throws if validation fails.
 
 ```typescript
-slug = routeParamValidated((v) => /^[a-z0-9-]+$/.test(v), "Invalid slug format");
+slug = input.validated((v) => /^[a-z0-9-]+$/.test(v), "Invalid slug format");
 // InputSignalWithTransform<string, string>
 ```
 
@@ -478,6 +442,8 @@ slug = routeParamValidated((v) => /^[a-z0-9-]+$/.test(v), "Invalid slug format")
 Creates an optional string input for a query parameter.
 
 ```typescript
+import { queryParam } from "ngx-typesafe-routes";
+
 // URL: /search?q=angular
 @Component({...})
 class SearchComponent {
@@ -487,7 +453,7 @@ class SearchComponent {
 
 #### `queryParamDefault(defaultValue)`
 
-Creates a query param input with a default value. The transform ensures the output is always a string.
+Creates a query param input with a default value.
 
 ```typescript
 tab = queryParamDefault("overview");
@@ -514,7 +480,6 @@ Creates a boolean query param input. Treats `'true'`, `'1'`, `'yes'` (case-insen
 showDetails = queryParamBoolean(false);
 // InputSignalWithTransform<boolean, string | undefined>
 // showDetails() => true when ?showDetails=true
-// showDetails() => true when ?showDetails=1
 // showDetails() => false when ?showDetails is absent
 ```
 
@@ -530,29 +495,6 @@ sort = queryParamTransform(
 // InputSignalWithTransform<'asc' | 'desc', string | undefined>
 ```
 
-### Route Data
-
-#### `routeData<T>()`
-
-Creates a required input for resolver data or static route data.
-
-```typescript
-// Route: { path: 'users/:userId', resolve: { user: userResolver } }
-@Component({...})
-class UserComponent {
-  user = routeData<User>(); // InputSignal<User>
-}
-```
-
-#### `routeDataOptional<T>(defaultValue)`
-
-Creates an optional route data input with a default value.
-
-```typescript
-config = routeDataOptional<AppConfig>({ theme: "light" });
-// InputSignal<AppConfig>
-```
-
 ---
 
 ## Guard Utilities
@@ -562,7 +504,7 @@ config = routeDataOptional<AppConfig>({ theme: "light" });
 Extracts typed params from an `ActivatedRouteSnapshot`. Returns the same `params` object cast to `PathParams<Path>`.
 
 ```typescript
-import { getTypedParams } from "typesafe-routes";
+import { getTypedParams } from "ngx-typesafe-routes";
 
 export const userGuard: CanActivateFn = (route) => {
   const { userId } = getTypedParams<"users/:userId">(route);
@@ -588,7 +530,7 @@ export const userGuard: CanActivateFn = (route) => {
 An interface extending `ActivatedRouteSnapshot` with typed `params` and `paramMap`. Use as a type assertion.
 
 ```typescript
-import type { TypedRouteSnapshot } from "typesafe-routes";
+import type { TypedRouteSnapshot } from "ngx-typesafe-routes";
 
 export const postGuard: CanActivateFn = (route) => {
   const snap = route as TypedRouteSnapshot<"users/:userId/posts/:postId">;
@@ -627,13 +569,6 @@ The registry interface. Created by `registerRoutes()`.
 
 ### `ValidPaths<TRegistry>`
 
-```typescript
-type ValidPaths<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> = keyof RoutePathMap<
-  TRegistry["routes"]
-> &
-  string;
-```
-
 Extracts the union of all valid path strings from a registry. Used to constrain path parameters in navigation functions and directives.
 
 ```typescript
@@ -644,61 +579,11 @@ type Paths = ValidPaths<typeof appRouter>;
 ### `PathParams<Path>`
 
 ```typescript
-type PathParams<'users/:userId/posts/:postId'> = { userId: string; postId: string }
-type PathParams<'users'> = {}
+type PathParams<"users/:userId/posts/:postId"> = { userId: string; postId: string };
+type PathParams<"users"> = {};
 ```
 
 Creates a params object type from a path string. Params with `:param` syntax become required `string` properties.
-
-### `ExtractPathParams<Path>`
-
-```typescript
-type ExtractPathParams<'users/:userId/posts/:postId'> = 'userId' | 'postId'
-type ExtractPathParams<'users'> = never
-```
-
-Extracts the union of parameter names from a path string.
-
-### `HasParams<Path>`
-
-```typescript
-type HasParams<'users/:userId'> = true
-type HasParams<'users'> = false
-```
-
-Boolean type: `true` if the path contains `:param` segments, `false` otherwise. Used internally to conditionally require `params` in navigation options.
-
-### `NavigateOptions<Path>`
-
-Typed options object for navigation. When `HasParams<Path>` is `true`, `params` is required. When `false`, `params` must not be provided.
-
-```typescript
-// HasParams<'users/:userId'> = true
-type Opts = NavigateOptions<"users/:userId">;
-// => { params: { userId: string }; queryParams?: ...; extras?: ... }
-
-// HasParams<'users'> = false
-type Opts = NavigateOptions<"users">;
-// => { params?: never; queryParams?: ...; extras?: ... }
-```
-
-### `ExtractAllPaths<TRoutes>`
-
-Recursively extracts all valid route paths from a routes array, including nested children with proper prefix joining.
-
-### `RoutePathMap<TRoutes>`
-
-Maps all extracted paths to themselves. Used internally to enable `keyof` extraction for `ValidPaths`.
-
-### `JoinPath<A, B>`
-
-Joins two path segments, handling empty strings correctly.
-
-```typescript
-type R = JoinPath<"users", ":userId">; // => 'users/:userId'
-type R = JoinPath<"", "users">; // => 'users'
-type R = JoinPath<"users", "">; // => 'users'
-```
 
 ### `QueryParamValue`
 

@@ -1,9 +1,11 @@
 /**
  * Signal Input Utilities for Route Parameters
  *
- * Provides type-safe utilities for using Angular's `withComponentInputBinding()`
- * feature with signal inputs. When configured, Angular automatically binds
- * route parameters to component inputs matching the parameter name.
+ * Provides `input` — a drop-in replacement for Angular's `input()` / `input.required()`
+ * tailored to route parameter binding via `withComponentInputBinding()`.
+ *
+ * Also provides query param helpers (`queryParam`, `queryParamNumber`, etc.)
+ * for typed query parameter binding.
  *
  * @example
  * ```typescript
@@ -11,117 +13,109 @@
  * provideRouter(appRouter.routes, withComponentInputBinding())
  *
  * // user.component.ts
+ * import { input, queryParam } from 'ngx-typesafe-routes';
+ *
  * @Component({...})
  * class UserComponent {
- *   userId = routeParam();       // bound to :userId
- *   tab = queryParam();          // bound to ?tab=...
- *   user = routeData<User>();    // bound to resolved data
+ *   userId = input.required();       // bound to :userId
+ *   tab = queryParam();              // bound to ?tab=...
  * }
  * ```
  */
-import { type InputSignal, type InputSignalWithTransform, input } from "@angular/core";
+import { type InputSignal, type InputSignalWithTransform, input as _ngInput } from "@angular/core";
 
 // Indirect references bypass Angular's static analysis (NG8110) while
 // preserving identical runtime behavior. These functions are designed to be
 // called as class field initializers in components/directives.
-const _input: typeof input = input;
-const _required: typeof input.required = input.required;
+const _input: typeof _ngInput = _ngInput;
+const _required: typeof _ngInput.required = _ngInput.required;
 
 // =============================================================================
-// Route Param Inputs
+// Route Param Input — `input` object
 // =============================================================================
+
+interface InputFunction {
+  /** Creates an optional route param input with a default value. */
+  (defaultValue: string): InputSignal<string>;
+
+  /** Creates a required route param input signal. */
+  required(): InputSignal<string>;
+
+  /** Creates a numeric route param input. Automatically parses to number. */
+  number(): InputSignalWithTransform<number, string>;
+
+  /** Creates a route param input with a custom transform function. */
+  transform<T>(transform: (value: string) => T): InputSignalWithTransform<T, string>;
+
+  /**
+   * Creates a validated route param input. Throws if validation fails.
+   * @param validate Validation function
+   * @param errorMessage Error message if validation fails
+   */
+  validated(
+    validate: (value: string) => boolean,
+    errorMessage?: string,
+  ): InputSignalWithTransform<string, string>;
+}
 
 /**
- * Creates a required route param input signal.
- * Use when the component can only be activated when the param exists.
+ * Type-safe route parameter input — mirrors Angular's `input()` / `input.required()` API.
+ * Import this instead of `input` from `@angular/core` for route parameter binding.
  *
  * @example
  * ```typescript
+ * import { input } from 'ngx-typesafe-routes';
+ *
  * @Component({...})
  * class UserComponent {
- *   userId = routeParam(); // bound to :userId
+ *   userId = input.required();                       // required string
+ *   tab = input('overview');                          // optional with default
+ *   postId = input.number();                          // auto-parsed to number
+ *   slug = input.transform(v => v.toUpperCase());     // custom transform
+ *   code = input.validated(v => v.length === 6);      // validated
  * }
  * ```
  */
-export function routeParam(): InputSignal<string> {
-  return _required<string>();
-}
-
-/**
- * Creates an optional route param input signal with a default value.
- *
- * @param defaultValue The default value if param is not provided
- */
-export function routeParamOptional(defaultValue: string): InputSignal<string> {
-  return _input<string>(defaultValue);
-}
-
-/**
- * Creates a route param input with transform function.
- * Useful for converting string params to other types.
- *
- * @param transform Function to transform the string value
- *
- * @example
- * ```typescript
- * userId = routeParamTransform(v => parseInt(v, 10));
- * ```
- */
-export function routeParamTransform<T>(
-  transform: (value: string) => T,
-): InputSignalWithTransform<T, string> {
-  return _required<T, string>({ transform });
-}
-
-/**
- * Creates an optional route param input with transform and default.
- *
- * @param defaultValue Default value when param is missing
- * @param transform Transform function
- */
-export function routeParamTransformOptional<T>(
-  defaultValue: T,
-  transform: (value: string | undefined) => T,
-): InputSignalWithTransform<T, string | undefined> {
-  return _input<T, string | undefined>(defaultValue, { transform });
-}
-
-/**
- * Creates a validated route param input.
- * Throws if validation fails.
- *
- * @param validate Validation function
- * @param errorMessage Error message if validation fails
- */
-export function routeParamValidated(
-  validate: (value: string) => boolean,
-  errorMessage: string = "Invalid route parameter",
-): InputSignalWithTransform<string, string> {
-  return _required<string, string>({
-    transform: (value: string) => {
-      if (!validate(value)) {
-        throw new Error(errorMessage);
-      }
-      return value;
+export const input: InputFunction = Object.assign(
+  function inputFn(defaultValue: string): InputSignal<string> {
+    return _input<string>(defaultValue);
+  },
+  {
+    required(): InputSignal<string> {
+      return _required<string>();
     },
-  });
-}
 
-/**
- * Creates a numeric route param input.
- * Automatically parses to number.
- */
-export function routeParamNumber(): InputSignalWithTransform<number, string> {
-  return _required<number, string>({
-    transform: (value: string) => {
-      const num = Number(value);
-      if (isNaN(num)) {
-        throw new Error(`Invalid numeric parameter: ${value}`);
-      }
-      return num;
+    number(): InputSignalWithTransform<number, string> {
+      return _required<number, string>({
+        transform: (value: string) => {
+          const num = Number(value);
+          if (isNaN(num)) {
+            throw new Error(`Invalid numeric parameter: ${value}`);
+          }
+          return num;
+        },
+      });
     },
-  });
-}
+
+    transform<T>(transform: (value: string) => T): InputSignalWithTransform<T, string> {
+      return _required<T, string>({ transform });
+    },
+
+    validated(
+      validate: (value: string) => boolean,
+      errorMessage: string = "Invalid route parameter",
+    ): InputSignalWithTransform<string, string> {
+      return _required<string, string>({
+        transform: (value: string) => {
+          if (!validate(value)) {
+            throw new Error(errorMessage);
+          }
+          return value;
+        },
+      });
+    },
+  },
+);
 
 // =============================================================================
 // Query Param Inputs
@@ -198,33 +192,4 @@ export function queryParamNumber(
       return isNaN(num) ? defaultValue : num;
     },
   });
-}
-
-// =============================================================================
-// Route Data Inputs
-// =============================================================================
-
-/**
- * Creates a route data input signal.
- * Use for data from resolvers or static route data.
- *
- * @example
- * ```typescript
- * @Component({...})
- * class UserComponent {
- *   user = routeData<User>(); // bound to resolved data
- * }
- * ```
- */
-export function routeData<T>(): InputSignal<T> {
-  return _required<T>();
-}
-
-/**
- * Creates an optional route data input.
- *
- * @param defaultValue Default value
- */
-export function routeDataOptional<T>(defaultValue: T): InputSignal<T> {
-  return _input<T>(defaultValue);
 }

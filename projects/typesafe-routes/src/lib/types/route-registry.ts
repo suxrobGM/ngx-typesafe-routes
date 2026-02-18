@@ -73,8 +73,10 @@ export interface RouteRegistry<TRoutes extends ReadonlyArray<Route>> {
  * Extracts all valid path strings from a route registry.
  * Use this to constrain path parameters in navigation functions and directives.
  */
-export type ValidPaths<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> =
-  keyof RoutePathMap<TRegistry["routes"]> & string;
+export type ValidPaths<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> = keyof RoutePathMap<
+  TRegistry["routes"]
+> &
+  string;
 
 /**
  * Registers routes and extracts type information.

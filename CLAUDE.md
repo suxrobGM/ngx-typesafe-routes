@@ -19,12 +19,12 @@ projects/typesafe-routes/src/
       route-types.ts                     # Core type utilities (ExtractPathParams, PathParams, etc.)
       route-registry.ts                  # RouteRegistry, ValidPaths, registerRoutes, buildPath, buildUrl
     navigation/
-      typed-navigation.ts               # typedNavigator, typedCreateUrlTree, typedCreateUrl
+      typed-navigation.ts               # createTypedRouter (DI provider + inject factory)
     inputs/
-      route-inputs.ts                    # Signal input factories (routeParam, queryParam, etc.)
+      route-inputs.ts                    # input object (route params), queryParam helpers
     directives/
-      typed-router-link-directive.ts     # createTypedRouterLink (hostDirectives wrapper)
-      typed-router-link-active-directive.ts  # createTypedRouterLinkActive
+      typed-router-link-directive.ts     # createTypedRouterLink ([routerLink] selector)
+      typed-router-link-active-directive.ts  # createTypedRouterLinkActive ([routerLinkActive] selector)
     guards/
       typed-guards.ts                    # TypedRouteSnapshot, getTypedParams
 ```
@@ -58,8 +58,8 @@ bun run format           # Prettier formatting
 Angular's compiler rejects `input()` and `input.required()` calls outside class member initializers. The input factory functions in `route-inputs.ts` use indirect references to bypass this:
 
 ```typescript
-const _input: typeof input = input;
-const _required: typeof input.required = input.required;
+const _input: typeof _ngInput = _ngInput;
+const _required: typeof _ngInput.required = _ngInput.required;
 ```
 
 Do not refactor these back to direct `input()` calls — ng-packagr will fail with NG8110.
@@ -74,13 +74,15 @@ If a linter changes these to `private`, the build will break.
 
 Both typed directives delegate all behavior to Angular's built-in directives via `hostDirectives`. They only add typed inputs and map them to the underlying directive. Do not reimplement RouterLink/RouterLinkActive behavior manually.
 
-### Functional API (No DI Services)
+### Navigation via DI (createTypedRouter)
 
-Navigation uses standalone functions instead of injectable services:
+Navigation uses a factory pattern with Angular DI:
 
-- `typedNavigator(registry)` — call in injection context, returns methods object
-- `typedCreateUrlTree(registry, ...)` — for guards (injection context)
-- `typedCreateUrl(registry, ...)` — pure function, no DI
+- `createTypedRouter(registry)` — called once at module level, returns `{ provideTypedRouter, injectTypedRouter }`
+- `provideTypedRouter` — add to app providers (registers an InjectionToken)
+- `injectTypedRouter()` — call in injection context, returns typed router object with `navigate`, `navigateByUrl`, `createUrlTree`, etc.
+
+This eliminates the need to import the registry in every component.
 
 ## Conventions
 
