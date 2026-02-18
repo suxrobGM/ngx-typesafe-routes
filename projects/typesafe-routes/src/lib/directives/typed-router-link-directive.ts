@@ -70,8 +70,12 @@ export function createTypedRouterLink<TRegistry extends RouteRegistry<ReadonlyAr
     constructor() {
       effect(() => {
         const params = this.linkParams() ?? {};
-        const resolved = buildPath(this.path() as string, params as any);
+        const resolved = buildPath(this.path(), params as any);
         this._routerLink.routerLink = resolved;
+        // RouterLink.updateHref() is only called from ngOnChanges, which doesn't
+        // fire when we set the property imperatively. Call it directly to sync
+        // the href attribute. The method is private in typings but stable.
+        (this._routerLink as any).updateHref();
       });
     }
   }
