@@ -1,14 +1,3 @@
-/**
- * TypedRouterLinkActive Directive
- *
- * A type-safe wrapper around Angular's RouterLinkActive directive.
- * Delegates all active-state tracking to Angular's RouterLinkActive
- * via hostDirectives composition, ensuring correct reactive updates
- * on navigation events.
- *
- * Uses the same `[routerLinkActive]` selector as Angular's built-in directive
- * so existing templates require only an import change.
- */
 import { Directive, effect, inject, input } from "@angular/core";
 import { type Route, RouterLinkActive } from "@angular/router";
 import { type RouteRegistry } from "../types/route-registry";

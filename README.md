@@ -115,7 +115,7 @@ export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 Route parameter inputs that mirror Angular's `input()` / `input.required()` API. Import `input` from the library instead of `@angular/core` for route params.
 
 ```typescript
-import { input, queryParam, queryParamNumber, queryParamBoolean } from "ngx-typesafe-routes";
+import { input, queryParam } from "ngx-typesafe-routes";
 
 @Component({...})
 export class UserComponent {
@@ -126,8 +126,8 @@ export class UserComponent {
   code   = input.validated(v => v.length === 6);   // validated
 
   // Query params
-  page   = queryParamNumber(1);               // numeric query param
-  debug  = queryParamBoolean(false);          // boolean query param
+  page   = queryParam.number(1);              // numeric query param
+  debug  = queryParam.boolean(false);         // boolean query param
   q      = queryParam();                      // optional string query param
 }
 ```

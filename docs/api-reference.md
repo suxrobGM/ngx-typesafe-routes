@@ -435,7 +435,9 @@ slug = input.validated((v) => /^[a-z0-9-]+$/.test(v), "Invalid slug format");
 // InputSignalWithTransform<string, string>
 ```
 
-### Query Params
+### Query Params — `queryParam`
+
+The `queryParam` object mirrors the `input` object pattern for query parameter binding.
 
 #### `queryParam()`
 
@@ -451,44 +453,44 @@ class SearchComponent {
 }
 ```
 
-#### `queryParamDefault(defaultValue)`
+#### `queryParam.withDefault(defaultValue)`
 
 Creates a query param input with a default value.
 
 ```typescript
-tab = queryParamDefault("overview");
+tab = queryParam.withDefault("overview");
 // InputSignalWithTransform<string, string | undefined>
 // tab() => 'overview' when ?tab is absent
 ```
 
-#### `queryParamNumber(defaultValue?)`
+#### `queryParam.number(defaultValue?)`
 
-Creates a numeric query param input.
+Creates a numeric query param input. Defaults to `0` if no default provided.
 
 ```typescript
-page = queryParamNumber(1);
+page = queryParam.number(1);
 // InputSignalWithTransform<number, string | undefined>
 // page() => 1 when ?page is absent
 // page() => 5 when ?page=5
 ```
 
-#### `queryParamBoolean(defaultValue?)`
+#### `queryParam.boolean(defaultValue?)`
 
-Creates a boolean query param input. Treats `'true'`, `'1'`, `'yes'` (case-insensitive) as `true`.
+Creates a boolean query param input. Treats `'true'`, `'1'`, `'yes'` (case-insensitive) as `true`. Defaults to `false`.
 
 ```typescript
-showDetails = queryParamBoolean(false);
+showDetails = queryParam.boolean(false);
 // InputSignalWithTransform<boolean, string | undefined>
 // showDetails() => true when ?showDetails=true
 // showDetails() => false when ?showDetails is absent
 ```
 
-#### `queryParamTransform(transform, defaultValue)`
+#### `queryParam.transform(transform, defaultValue)`
 
 Creates a query param input with a custom transform.
 
 ```typescript
-sort = queryParamTransform(
+sort = queryParam.transform(
   (v) => (v === "asc" || v === "desc" ? v : "asc") as "asc" | "desc",
   "asc",
 );

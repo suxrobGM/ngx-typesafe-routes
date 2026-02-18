@@ -1,32 +1,5 @@
-/**
- * Route Registry
- *
- * Provides a way to register Angular routes and extract type information
- * while maintaining 100% compatibility with standard Angular routing.
- *
- * Usage:
- * ```typescript
- * const routes = [
- *   { path: '', component: HomeComponent },
- *   { path: 'users/:userId', component: UserDetailComponent },
- *   {
- *     path: 'products/:categoryId',
- *     children: [
- *       { path: ':productId', component: ProductComponent }
- *     ]
- *   }
- * ] as const satisfies Routes;
- *
- * export const appRouter = registerRoutes(routes);
- * // In app.config.ts: provideRouter(appRouter.routes)
- * ```
- */
 import type { NavigationExtras, Route } from "@angular/router";
 import type { HasParams, JoinPath, PathParams, QueryParamValue } from "./route-types";
-
-// =============================================================================
-// Route Path Extraction Types
-// =============================================================================
 
 /**
  * Recursively extracts all valid route paths from a routes configuration.
@@ -56,10 +29,6 @@ export type ExtractAllPaths<
 export type RoutePathMap<TRoutes extends ReadonlyArray<Route>> = {
   [K in ExtractAllPaths<TRoutes>]: K;
 };
-
-// =============================================================================
-// Route Registry
-// =============================================================================
 
 /**
  * A typed route registry that preserves route type information.
@@ -100,10 +69,6 @@ export function registerRoutes<const TRoutes extends ReadonlyArray<Route>>(
   return { routes };
 }
 
-// =============================================================================
-// Navigation Options
-// =============================================================================
-
 /**
  * Navigation options based on whether path has params.
  * When the path contains `:param` segments, `params` is required.
@@ -120,10 +85,6 @@ export type NavigateOptions<Path extends string> =
         queryParams?: Record<string, QueryParamValue>;
         extras?: Omit<NavigationExtras, "queryParams">;
       };
-
-// =============================================================================
-// Path Utilities
-// =============================================================================
 
 /**
  * Builds a URL path by substituting parameters.

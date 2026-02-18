@@ -1,23 +1,3 @@
-/**
- * Typed Navigation
- *
- * Provides `createTypedRouter()` — a factory that returns a DI provider
- * and an inject function, eliminating the need to import the route registry
- * in every component.
- *
- * Usage:
- * ```typescript
- * // app.routes.ts (one-time setup)
- * export const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
- *
- * // app.config.ts
- * providers: [provideRouter(appRouter.routes), provideTypedRouter]
- *
- * // any component
- * private router = injectTypedRouter();
- * this.router.navigate('users/:userId', { params: { userId: '42' } });
- * ```
- */
 import {
   type EnvironmentProviders,
   InjectionToken,
@@ -36,10 +16,6 @@ import {
 import type { Observable } from "rxjs";
 import { type RouteRegistry, type ValidPaths, buildPath, buildUrl } from "../types/route-registry";
 import type { HasParams, PathParams, QueryParamValue } from "../types/route-types";
-
-// =============================================================================
-// Navigation Args Type
-// =============================================================================
 
 /**
  * Navigation arguments — conditionally requires params based on the path.
@@ -63,10 +39,6 @@ type NavigateArgs<Path extends string> =
         },
       ];
 
-// =============================================================================
-// Internal Helpers
-// =============================================================================
-
 function extractArgs(args: [string, any?]) {
   const [path, options] = args;
   const params = options?.params ?? {};
@@ -75,10 +47,6 @@ function extractArgs(args: [string, any?]) {
   if (queryParams) extras.queryParams = queryParams;
   return { path, params, queryParams, extras };
 }
-
-// =============================================================================
-// Typed Router Object
-// =============================================================================
 
 function buildTypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>(
   _registry: TRegistry,
@@ -123,17 +91,14 @@ function buildTypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>
       });
     },
 
-    /** The current URL. */
     get url(): string {
       return router.url;
     },
 
-    /** Router events observable. */
     get events(): Observable<RouterEvent> {
       return router.events;
     },
 
-    /** The current router state. */
     get routerState(): RouterState {
       return router.routerState;
     },
@@ -155,14 +120,9 @@ function buildTypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>
   };
 }
 
-/** The return type of the typed router object. */
 type TypedRouter<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> = ReturnType<
   typeof buildTypedRouter<TRegistry>
 >;
-
-// =============================================================================
-// Primary API: createTypedRouter
-// =============================================================================
 
 /**
  * Creates a typed router factory for the given route registry.

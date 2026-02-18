@@ -1,13 +1,4 @@
 /**
- * Core type utilities for extracting type information from Angular route paths.
- * These types work with standard Angular route definitions using `as const`.
- */
-
-// =============================================================================
-// Path Parameter Extraction
-// =============================================================================
-
-/**
  * Extracts parameter names from a single path segment.
  * E.g., ":id" -> "id", "users" -> never
  */
@@ -33,24 +24,12 @@ export type PathParams<Path extends string> =
  */
 export type HasParams<Path extends string> = ExtractPathParams<Path> extends never ? false : true;
 
-// =============================================================================
-// Path Joining
-// =============================================================================
-
-/**
- * Joins two path segments.
- */
+/** Joins two path segments. */
 export type JoinPath<A extends string, B extends string> = A extends ""
   ? B
   : B extends ""
     ? A
     : `${A}/${B}`;
 
-// =============================================================================
-// Query Parameter Types
-// =============================================================================
-
-/**
- * Standard query param value types.
- */
+/** Standard query param value types. */
 export type QueryParamValue = string | number | boolean | string[] | null | undefined;

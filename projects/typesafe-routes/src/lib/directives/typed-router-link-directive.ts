@@ -1,13 +1,3 @@
-/**
- * TypedRouterLink Directive
- *
- * A type-safe wrapper around Angular's RouterLink directive.
- * Delegates all DOM behavior (click handling, href, aria, prefetch)
- * to Angular's RouterLink via hostDirectives composition.
- *
- * Uses the same `[routerLink]` selector as Angular's built-in directive
- * so existing templates require only an import change.
- */
 import { Directive, effect, inject, input } from "@angular/core";
 import { type Route, RouterLink } from "@angular/router";
 import { type RouteRegistry, type ValidPaths, buildPath } from "../types/route-registry";

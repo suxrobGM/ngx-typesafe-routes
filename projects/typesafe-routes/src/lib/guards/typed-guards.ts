@@ -1,16 +1,3 @@
-/**
- * Type-Safe Guard Utilities
- *
- * Provides typed views of route snapshots for use in standard Angular guards.
- *
- * @example
- * ```typescript
- * export const userGuard: CanActivateFn = (route) => {
- *   const { userId } = getTypedParams<'users/:userId'>(route);
- *   return inject(AuthService).canAccess(userId);
- * };
- * ```
- */
 import type { ActivatedRouteSnapshot } from "@angular/router";
 import type { ExtractPathParams, PathParams } from "../types/route-types";
 

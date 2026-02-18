@@ -1,17 +1,6 @@
 import { Component } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
-import {
-  input,
-  queryParam,
-  queryParamBoolean,
-  queryParamDefault,
-  queryParamNumber,
-  queryParamTransform,
-} from "./route-inputs";
-
-// =============================================================================
-// Helper: create a component with given inputs and extract the signal
-// =============================================================================
+import { input, queryParam } from "./route-inputs";
 
 function createComponentWithInput<T>(inputFactory: () => T): T {
   let signal: T;
@@ -28,10 +17,6 @@ function createComponentWithInput<T>(inputFactory: () => T): T {
   TestBed.createComponent(TestComponent);
   return signal!;
 }
-
-// =============================================================================
-// input object
-// =============================================================================
 
 describe("input", () => {
   it("should be a function with required, number, transform, and validated properties", () => {
@@ -81,58 +66,64 @@ describe("input", () => {
   });
 });
 
-// =============================================================================
-// queryParam helpers
-// =============================================================================
-
 describe("queryParam", () => {
-  it("should create an optional string input defaulting to undefined", () => {
-    const signal = createComponentWithInput(() => queryParam());
-    expect(signal).toBeTruthy();
-    expect((signal as any)()).toBeUndefined();
-  });
-});
-
-describe("queryParamDefault", () => {
-  it("should create an input with a default value", () => {
-    const signal = createComponentWithInput(() => queryParamDefault("overview"));
-    expect(signal).toBeTruthy();
-    expect((signal as any)()).toBe("overview");
-  });
-});
-
-describe("queryParamNumber", () => {
-  it("should create a numeric input with default", () => {
-    const signal = createComponentWithInput(() => queryParamNumber(1));
-    expect(signal).toBeTruthy();
-    expect((signal as any)()).toBe(1);
+  it("should be a function with withDefault, number, boolean, and transform properties", () => {
+    expect(typeof queryParam).toBe("function");
+    expect(typeof queryParam.withDefault).toBe("function");
+    expect(typeof queryParam.number).toBe("function");
+    expect(typeof queryParam.boolean).toBe("function");
+    expect(typeof queryParam.transform).toBe("function");
   });
 
-  it("should default to 0 when no default provided", () => {
-    const signal = createComponentWithInput(() => queryParamNumber());
-    expect((signal as any)()).toBe(0);
-  });
-});
-
-describe("queryParamBoolean", () => {
-  it("should create a boolean input defaulting to false", () => {
-    const signal = createComponentWithInput(() => queryParamBoolean());
-    expect(signal).toBeTruthy();
-    expect((signal as any)()).toBe(false);
+  describe("queryParam()", () => {
+    it("should create an optional string input defaulting to undefined", () => {
+      const signal = createComponentWithInput(() => queryParam());
+      expect(signal).toBeTruthy();
+      expect((signal as any)()).toBeUndefined();
+    });
   });
 
-  it("should use provided default value", () => {
-    const signal = createComponentWithInput(() => queryParamBoolean(true));
-    expect((signal as any)()).toBe(true);
+  describe("queryParam.withDefault()", () => {
+    it("should create an input with a default value", () => {
+      const signal = createComponentWithInput(() => queryParam.withDefault("overview"));
+      expect(signal).toBeTruthy();
+      expect((signal as any)()).toBe("overview");
+    });
   });
-});
 
-describe("queryParamTransform", () => {
-  it("should create a transform input with default", () => {
-    const signal = createComponentWithInput(() =>
-      queryParamTransform((v) => (v === "desc" ? "desc" : "asc"), "asc"),
-    );
-    expect(signal).toBeTruthy();
-    expect((signal as any)()).toBe("asc");
+  describe("queryParam.number()", () => {
+    it("should create a numeric input with default", () => {
+      const signal = createComponentWithInput(() => queryParam.number(1));
+      expect(signal).toBeTruthy();
+      expect((signal as any)()).toBe(1);
+    });
+
+    it("should default to 0 when no default provided", () => {
+      const signal = createComponentWithInput(() => queryParam.number());
+      expect((signal as any)()).toBe(0);
+    });
+  });
+
+  describe("queryParam.boolean()", () => {
+    it("should create a boolean input defaulting to false", () => {
+      const signal = createComponentWithInput(() => queryParam.boolean());
+      expect(signal).toBeTruthy();
+      expect((signal as any)()).toBe(false);
+    });
+
+    it("should use provided default value", () => {
+      const signal = createComponentWithInput(() => queryParam.boolean(true));
+      expect((signal as any)()).toBe(true);
+    });
+  });
+
+  describe("queryParam.transform()", () => {
+    it("should create a transform input with default", () => {
+      const signal = createComponentWithInput(() =>
+        queryParam.transform((v) => (v === "desc" ? "desc" : "asc"), "asc"),
+      );
+      expect(signal).toBeTruthy();
+      expect((signal as any)()).toBe("asc");
+    });
   });
 });

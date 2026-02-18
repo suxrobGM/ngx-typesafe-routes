@@ -4,10 +4,6 @@ import { type Routes, provideRouter } from "@angular/router";
 import { registerRoutes } from "../types/route-registry";
 import { createTypedRouter } from "./typed-navigation";
 
-// =============================================================================
-// Test Route Setup
-// =============================================================================
-
 const routes = [
   { path: "", component: Component },
   { path: "users", component: Component },
@@ -20,10 +16,6 @@ const routes = [
 
 const appRouter = registerRoutes(routes);
 const { provideTypedRouter, injectTypedRouter } = createTypedRouter(appRouter);
-
-// =============================================================================
-// createTypedRouter
-// =============================================================================
 
 describe("createTypedRouter", () => {
   beforeEach(() => {

@@ -12,24 +12,14 @@ export {
 } from "./lib/types/route-registry";
 
 export type { RouteRegistry, ValidPaths } from "./lib/types/route-registry";
-
-// Core type utilities
 export type { PathParams, QueryParamValue } from "./lib/types/route-types";
-
-// Typed router (DI provider + inject function factory)
 export { createTypedRouter } from "./lib/navigation/typed-navigation";
 
 // Route param input (mirrors Angular's input() API for route params)
 export { input } from "./lib/inputs/route-inputs";
 
-// Query param inputs
-export {
-  queryParam,
-  queryParamBoolean,
-  queryParamDefault,
-  queryParamNumber,
-  queryParamTransform,
-} from "./lib/inputs/route-inputs";
+// Query param input (mirrors the input object pattern for query params)
+export { queryParam } from "./lib/inputs/route-inputs";
 
 // Directives (typed wrappers over RouterLink/RouterLinkActive)
 export { createTypedRouterLink } from "./lib/directives/typed-router-link-directive";

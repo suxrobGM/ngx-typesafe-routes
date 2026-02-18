@@ -5,10 +5,6 @@ import { registerRoutes } from "../types/route-registry";
 import { createTypedRouterLinkActive } from "./typed-router-link-active-directive";
 import { createTypedRouterLink } from "./typed-router-link-directive";
 
-// =============================================================================
-// Test Route Setup
-// =============================================================================
-
 const routes = [
   { path: "", component: Component },
   { path: "users", component: Component },
@@ -19,10 +15,7 @@ const appRouter = registerRoutes(routes);
 const TypedRouterLink = createTypedRouterLink(appRouter);
 const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
 
-// =============================================================================
-// Host Components — use NO_ERRORS_SCHEMA so AOT skips unknown binding checks.
-// The directive is added at runtime via TestBed.overrideComponent.
-// =============================================================================
+// NO_ERRORS_SCHEMA so AOT skips unknown binding checks; directive added via TestBed.overrideComponent.
 
 @Component({
   template: `<a [routerLink]="'users'" [routerLinkActive]="'active'">Users</a>`,
@@ -37,10 +30,6 @@ class SingleClassHost {}
   schemas: [NO_ERRORS_SCHEMA],
 })
 class MultiClassHost {}
-
-// =============================================================================
-// createTypedRouterLinkActive
-// =============================================================================
 
 describe("createTypedRouterLinkActive", () => {
   it("should return a directive class", () => {

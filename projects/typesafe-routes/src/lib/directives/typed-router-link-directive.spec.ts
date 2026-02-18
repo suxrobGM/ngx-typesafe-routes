@@ -5,10 +5,6 @@ import { type Routes, provideRouter } from "@angular/router";
 import { buildPath, registerRoutes } from "../types/route-registry";
 import { createTypedRouterLink } from "./typed-router-link-directive";
 
-// =============================================================================
-// Test Route Setup
-// =============================================================================
-
 const routes = [
   { path: "", component: Component },
   { path: "users", component: Component },
@@ -18,10 +14,7 @@ const routes = [
 const appRouter = registerRoutes(routes);
 const TypedRouterLink = createTypedRouterLink(appRouter);
 
-// =============================================================================
-// Host Components — use NO_ERRORS_SCHEMA so AOT skips unknown binding checks.
-// The directive is added at runtime via TestBed.overrideComponent.
-// =============================================================================
+// NO_ERRORS_SCHEMA so AOT skips unknown binding checks; directive added via TestBed.overrideComponent.
 
 @Component({
   selector: "static-link-host",
@@ -46,10 +39,6 @@ class ParamLinkHost {}
   schemas: [NO_ERRORS_SCHEMA],
 })
 class RootLinkHost {}
-
-// =============================================================================
-// createTypedRouterLink
-// =============================================================================
 
 describe("createTypedRouterLink", () => {
   it("should return a directive class", () => {
@@ -85,13 +74,11 @@ describe("createTypedRouterLink", () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // NO_ERRORS_SCHEMA drops [routerLinkParams] at compile time, so we set
-    // the linkParams input via Angular's internal inputTransforms mechanism.
+    // Set linkParams directly since NO_ERRORS_SCHEMA drops the binding at compile time.
     const directiveDebug = fixture.debugElement.query(By.directive(TypedRouterLink));
     const directive = directiveDebug.injector.get(TypedRouterLink);
 
-    // Use the RouterLink instance directly to verify param substitution works:
-    // Set routerLink to the already-resolved path, bypassing the effect.
+    // Set resolved path directly, bypassing the effect.
     directive._routerLink.routerLink = "/users/42";
     (directive._routerLink as any).updateHref();
 
@@ -103,8 +90,6 @@ describe("createTypedRouterLink", () => {
   });
 
   it("should resolve path params through buildPath", () => {
-    // Verify that buildPath (used inside the directive's effect) correctly
-    // substitutes route params — this is the core param resolution logic.
     expect(buildPath("users/:userId", { userId: "42" })).toBe("/users/42");
     expect(buildPath("users/:userId", { userId: "99" })).toBe("/users/99");
     expect(buildPath("orders/:orderId/items/:itemId", { orderId: "1", itemId: "2" })).toBe(

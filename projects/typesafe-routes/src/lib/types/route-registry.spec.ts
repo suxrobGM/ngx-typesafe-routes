@@ -7,10 +7,6 @@ import {
   validateParams,
 } from "./route-registry";
 
-// =============================================================================
-// registerRoutes
-// =============================================================================
-
 describe("registerRoutes", () => {
   it("should return a registry wrapping the routes", () => {
     const routes = [{ path: "", component: {} as any }] as const satisfies Routes;
@@ -29,10 +25,6 @@ describe("registerRoutes", () => {
     expect(registry.routes[1]).toBe(routes[1]);
   });
 });
-
-// =============================================================================
-// buildPath
-// =============================================================================
 
 describe("buildPath", () => {
   it("should return / for empty path", () => {
@@ -70,10 +62,6 @@ describe("buildPath", () => {
     expect(buildPath("users/:userId", { userId: "a/b" } as any)).toBe("/users/a%2Fb");
   });
 });
-
-// =============================================================================
-// buildUrl
-// =============================================================================
 
 describe("buildUrl", () => {
   it("should build URL without query params", () => {
@@ -123,10 +111,6 @@ describe("buildUrl", () => {
   });
 });
 
-// =============================================================================
-// validateParams
-// =============================================================================
-
 describe("validateParams", () => {
   it("should return true when all params are provided", () => {
     expect(validateParams("users/:userId", { userId: "42" })).toBe(true);
@@ -165,10 +149,6 @@ describe("validateParams", () => {
     ).toBe(false);
   });
 });
-
-// =============================================================================
-// getParamNames
-// =============================================================================
 
 describe("getParamNames", () => {
   it("should return empty array for path with no params", () => {

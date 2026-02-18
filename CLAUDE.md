@@ -21,7 +21,7 @@ projects/typesafe-routes/src/
     navigation/
       typed-navigation.ts               # createTypedRouter (DI provider + inject factory)
     inputs/
-      route-inputs.ts                    # input object (route params), queryParam helpers
+      route-inputs.ts                    # input object (route params), queryParam object (query params)
     directives/
       typed-router-link-directive.ts     # createTypedRouterLink ([routerLink] selector)
       typed-router-link-active-directive.ts  # createTypedRouterLinkActive ([routerLinkActive] selector)

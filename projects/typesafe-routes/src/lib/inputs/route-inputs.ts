@@ -1,27 +1,3 @@
-/**
- * Signal Input Utilities for Route Parameters
- *
- * Provides `input` — a drop-in replacement for Angular's `input()` / `input.required()`
- * tailored to route parameter binding via `withComponentInputBinding()`.
- *
- * Also provides query param helpers (`queryParam`, `queryParamNumber`, etc.)
- * for typed query parameter binding.
- *
- * @example
- * ```typescript
- * // app.config.ts
- * provideRouter(appRouter.routes, withComponentInputBinding())
- *
- * // user.component.ts
- * import { input, queryParam } from 'ngx-typesafe-routes';
- *
- * @Component({...})
- * class UserComponent {
- *   userId = input.required();       // bound to :userId
- *   tab = queryParam();              // bound to ?tab=...
- * }
- * ```
- */
 import { type InputSignal, type InputSignalWithTransform, input as _ngInput } from "@angular/core";
 
 // Indirect references bypass Angular's static analysis (NG8110) while
@@ -29,10 +5,6 @@ import { type InputSignal, type InputSignalWithTransform, input as _ngInput } fr
 // called as class field initializers in components/directives.
 const _input: typeof _ngInput = _ngInput;
 const _required: typeof _ngInput.required = _ngInput.required;
-
-// =============================================================================
-// Route Param Input — `input` object
-// =============================================================================
 
 interface InputFunction {
   /** Creates an optional route param input with a default value. */
@@ -117,79 +89,81 @@ export const input: InputFunction = Object.assign(
   },
 );
 
-// =============================================================================
-// Query Param Inputs
-// =============================================================================
+interface QueryParamFunction {
+  /** Creates an optional string query param input (undefined when absent). */
+  (): InputSignal<string | undefined>;
+
+  /** Creates a string query param input with a default value. */
+  withDefault(defaultValue: string): InputSignalWithTransform<string, string | undefined>;
+
+  /** Creates a numeric query param input. Returns `defaultValue` when absent or non-numeric. */
+  number(defaultValue?: number): InputSignalWithTransform<number, string | undefined>;
+
+  /** Creates a boolean query param input. Treats 'true', '1', 'yes' as true. */
+  boolean(defaultValue?: boolean): InputSignalWithTransform<boolean, string | undefined>;
+
+  /** Creates a query param input with a custom transform function. */
+  transform<T>(
+    transform: (value: string | undefined) => T,
+    defaultValue: T,
+  ): InputSignalWithTransform<T, string | undefined>;
+}
 
 /**
- * Creates a query param input signal.
- * Query params are always optional strings.
+ * Type-safe query parameter input — mirrors the `input` object pattern.
  *
  * @example
  * ```typescript
+ * import { queryParam } from 'ngx-typesafe-routes';
+ *
  * @Component({...})
  * class SearchComponent {
- *   q = queryParam();
- *   page = queryParam();
+ *   q     = queryParam();                  // optional string
+ *   tab   = queryParam.withDefault('all'); // string with default
+ *   page  = queryParam.number(1);          // numeric, defaults to 1
+ *   debug = queryParam.boolean(false);     // boolean, defaults to false
+ *   sort  = queryParam.transform(          // custom transform
+ *     v => (v === 'desc' ? 'desc' : 'asc'),
+ *     'asc'
+ *   );
  * }
  * ```
  */
-export function queryParam(): InputSignal<string | undefined> {
-  return _input<string | undefined>(undefined);
-}
-
-/**
- * Creates a query param input with default value.
- *
- * @param defaultValue Default value when param is missing
- */
-export function queryParamDefault(
-  defaultValue: string,
-): InputSignalWithTransform<string, string | undefined> {
-  return _input<string, string | undefined>(defaultValue, {
-    transform: (v: string | undefined) => v ?? defaultValue,
-  });
-}
-
-/**
- * Creates a query param input with transform.
- *
- * @param transform Transform function
- * @param defaultValue Default value
- */
-export function queryParamTransform<T>(
-  transform: (value: string | undefined) => T,
-  defaultValue: T,
-): InputSignalWithTransform<T, string | undefined> {
-  return _input<T, string | undefined>(defaultValue, { transform });
-}
-
-/**
- * Creates a boolean query param input.
- * Treats 'true', '1', 'yes' as true.
- */
-export function queryParamBoolean(
-  defaultValue: boolean = false,
-): InputSignalWithTransform<boolean, string | undefined> {
-  return _input<boolean, string | undefined>(defaultValue, {
-    transform: (value: string | undefined) => {
-      if (value === undefined || value === null) return defaultValue;
-      return ["true", "1", "yes"].includes(value.toLowerCase());
+export const queryParam: QueryParamFunction = Object.assign(
+  function queryParamFn(): InputSignal<string | undefined> {
+    return _input<string | undefined>(undefined);
+  },
+  {
+    withDefault(defaultValue: string): InputSignalWithTransform<string, string | undefined> {
+      return _input<string, string | undefined>(defaultValue, {
+        transform: (v: string | undefined) => v ?? defaultValue,
+      });
     },
-  });
-}
 
-/**
- * Creates a numeric query param input.
- */
-export function queryParamNumber(
-  defaultValue: number = 0,
-): InputSignalWithTransform<number, string | undefined> {
-  return _input<number, string | undefined>(defaultValue, {
-    transform: (value: string | undefined) => {
-      if (value === undefined || value === null) return defaultValue;
-      const num = Number(value);
-      return isNaN(num) ? defaultValue : num;
+    number(defaultValue: number = 0): InputSignalWithTransform<number, string | undefined> {
+      return _input<number, string | undefined>(defaultValue, {
+        transform: (value: string | undefined) => {
+          if (value === undefined || value === null) return defaultValue;
+          const num = Number(value);
+          return isNaN(num) ? defaultValue : num;
+        },
+      });
     },
-  });
-}
+
+    boolean(defaultValue: boolean = false): InputSignalWithTransform<boolean, string | undefined> {
+      return _input<boolean, string | undefined>(defaultValue, {
+        transform: (value: string | undefined) => {
+          if (value === undefined || value === null) return defaultValue;
+          return ["true", "1", "yes"].includes(value.toLowerCase());
+        },
+      });
+    },
+
+    transform<T>(
+      transform: (value: string | undefined) => T,
+      defaultValue: T,
+    ): InputSignalWithTransform<T, string | undefined> {
+      return _input<T, string | undefined>(defaultValue, { transform });
+    },
+  },
+);
