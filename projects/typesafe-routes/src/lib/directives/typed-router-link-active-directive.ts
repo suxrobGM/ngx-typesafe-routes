@@ -1,99 +1,63 @@
 /**
  * TypedRouterLinkActive Directive
  *
- * A type-safe wrapper around Angular's RouterLink directive.
- * Provides compile-time checking for route paths and parameters.
+ * A type-safe wrapper around Angular's RouterLinkActive directive.
+ * Delegates all active-state tracking to Angular's RouterLinkActive
+ * via hostDirectives composition, ensuring correct reactive updates
+ * on navigation events.
  */
-import { Directive, ElementRef, type OnChanges, Renderer2, inject, input } from "@angular/core";
-import { type Route, Router } from "@angular/router";
+import { Directive, effect, inject, input } from "@angular/core";
+import { type Route, RouterLinkActive } from "@angular/router";
 import { type RouteRegistry } from "../types/route-registry";
 
-type ValidPaths<TRegistry extends RouteRegistry<any>> =
-  TRegistry extends RouteRegistry<infer R> ? keyof TRegistry["paths"] & string : never;
-
-@Directive({
-  selector: "[typedLinkActive]",
-  standalone: true,
-})
-class TypedRouterLinkActiveDirective<TPaths> implements OnChanges {
-  private readonly router = inject(Router);
-  private readonly el = inject(ElementRef);
-  private readonly renderer = inject(Renderer2);
-
-  /**
-   * Classes to add when active
-   */
-  public readonly activeClass = input.required<string | string[]>({ alias: "typedLinkActive" });
-
-  /**
-   * The path to check for active state
-   */
-  public readonly typedLinkActiveFor = input<TPaths>();
-
-  /**
-   * Options for active matching
-   */
-  public readonly typedLinkActiveOptions = input<{ exact?: boolean }>({ exact: false });
-
-  private isActive = false;
-
-  ngOnChanges(): void {
-    this.updateActiveState();
-  }
-
-  private updateActiveState(): void {
-    if (!this.typedLinkActiveFor) {
-      return;
-    }
-
-    const path = "/" + this.typedLinkActiveFor();
-    const pattern = path.replace(/:(\w+)/g, "[^/]+");
-    const regex = new RegExp(this.typedLinkActiveOptions().exact ? `^${pattern}$` : `^${pattern}`);
-
-    const currentPath = this.router.url.split("?")[0].split("#")[0];
-    const nowActive = regex.test(currentPath);
-
-    if (nowActive !== this.isActive) {
-      this.isActive = nowActive;
-      this.updateClasses();
-    }
-  }
-
-  private updateClasses(): void {
-    const activeClass = this.activeClass();
-    const classes = Array.isArray(activeClass) ? activeClass : activeClass.split(" ");
-
-    for (const cls of classes) {
-      if (this.isActive) {
-        this.renderer.addClass(this.el.nativeElement, cls);
-      } else {
-        this.renderer.removeClass(this.el.nativeElement, cls);
-      }
-    }
-  }
-}
-
 /**
- * Creates a TypedRouterLinkActive directive.
+ * Creates a TypedRouterLinkActive directive for the given route registry.
  *
  * @example
  * ```typescript
- * export const TypedRouterLinkActive = createTypedRouterLinkActive(appRoutes);
+ * export const TypedRouterLinkActive = createTypedRouterLinkActive(appRouter);
  *
  * @Component({
  *   imports: [TypedRouterLink, TypedRouterLinkActive],
  *   template: `
  *     <a [typedLink]="'users'"
  *        [typedLinkActive]="'active'"
- *        [typedLinkActiveOptions]="{ exact: false }">
+ *        [routerLinkActiveOptions]="{ exact: false }">
  *       Users
  *     </a>
  *   `
  * })
+ * class MyComponent {}
  * ```
  */
 export function createTypedRouterLinkActive<TRegistry extends RouteRegistry<ReadonlyArray<Route>>>(
   _registry: TRegistry,
 ) {
-  return TypedRouterLinkActiveDirective<ValidPaths<TRegistry>>;
+  @Directive({
+    selector: "[typedLinkActive]",
+    standalone: true,
+    hostDirectives: [
+      {
+        directive: RouterLinkActive,
+        inputs: ["routerLinkActiveOptions"],
+        outputs: ["isActiveChange"],
+      },
+    ],
+  })
+  class TypedRouterLinkActiveDirective {
+    /** @internal */
+    public readonly _rla = inject(RouterLinkActive);
+
+    /** CSS class(es) to add when the route is active. */
+    public readonly activeClass = input.required<string | string[]>({ alias: "typedLinkActive" });
+
+    constructor() {
+      effect(() => {
+        const classes = this.activeClass();
+        this._rla.routerLinkActive = Array.isArray(classes) ? classes : [classes];
+      });
+    }
+  }
+
+  return TypedRouterLinkActiveDirective;
 }

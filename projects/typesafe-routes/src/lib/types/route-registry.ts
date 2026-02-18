@@ -6,10 +6,8 @@
  *
  * Usage:
  * ```typescript
- * // Define routes as normal Angular routes with `as const`
- * export const routes = [
+ * const routes = [
  *   { path: '', component: HomeComponent },
- *   { path: 'users', component: UsersComponent },
  *   { path: 'users/:userId', component: UserDetailComponent },
  *   {
  *     path: 'products/:categoryId',
@@ -19,21 +17,21 @@
  *   }
  * ] as const satisfies Routes;
  *
- * // Create typed router
- * export const AppRouter = createTypedRouter(routes);
+ * export const appRouter = registerRoutes(routes);
+ * // In app.config.ts: provideRouter(appRouter.routes)
  * ```
  */
-import type { Route, Routes } from "@angular/router";
+import type { NavigationExtras, Route } from "@angular/router";
 import type { HasParams, JoinPath, PathParams, QueryParamValue } from "./route-types";
 
 // =============================================================================
-// Route Path Builder Types
+// Route Path Extraction Types
 // =============================================================================
 
 /**
- * Recursively extracts all valid route paths from a routes configuration
+ * Recursively extracts all valid route paths from a routes configuration.
  */
-type ExtractAllPaths<
+export type ExtractAllPaths<
   TRoutes extends ReadonlyArray<Route>,
   Prefix extends string = "",
 > = TRoutes extends readonly [infer First extends Route, ...infer Rest extends ReadonlyArray<Route>]
@@ -53,129 +51,33 @@ type ExtractAllPaths<
   : never;
 
 /**
- * Gets the full path for a route, including parent paths
- */
-type GetFullPath<
-  TRoutes extends ReadonlyArray<Route>,
-  TargetPath extends string,
-  Prefix extends string = "",
-> = TRoutes extends readonly [infer First extends Route, ...infer Rest extends ReadonlyArray<Route>]
-  ? First extends { path: infer P extends string }
-    ? First extends { children: infer C extends ReadonlyArray<Route> }
-      ? TargetPath extends P
-        ? JoinPath<Prefix, P>
-        : GetFullPath<C, TargetPath, JoinPath<Prefix, P>> | GetFullPath<Rest, TargetPath, Prefix>
-      : TargetPath extends P
-        ? JoinPath<Prefix, P>
-        : GetFullPath<Rest, TargetPath, Prefix>
-    : GetFullPath<Rest, TargetPath, Prefix>
-  : never;
-
-/**
- * Finds a route definition by its path
- */
-type FindRoute<
-  TRoutes extends ReadonlyArray<Route>,
-  TargetPath extends string,
-> = TRoutes extends readonly [infer First extends Route, ...infer Rest extends ReadonlyArray<Route>]
-  ? First extends { path: infer P extends string }
-    ? TargetPath extends P
-      ? First
-      : First extends { children: infer C extends ReadonlyArray<Route> }
-        ? FindRoute<C, TargetPath> extends never
-          ? FindRoute<Rest, TargetPath>
-          : FindRoute<C, TargetPath>
-        : FindRoute<Rest, TargetPath>
-    : FindRoute<Rest, TargetPath>
-  : never;
-
-// =============================================================================
-// Navigation Options Types
-// =============================================================================
-
-/**
- * Navigation extras matching Angular's NavigationExtras
- */
-export interface TypedNavigationExtras {
-  relativeTo?: unknown;
-  queryParams?: Record<string, QueryParamValue>;
-  fragment?: string;
-  queryParamsHandling?: "merge" | "preserve" | "";
-  preserveFragment?: boolean;
-  onSameUrlNavigation?: "reload" | "ignore";
-  skipLocationChange?: boolean;
-  replaceUrl?: boolean;
-  state?: Record<string, unknown>;
-  info?: unknown;
-}
-
-/**
- * Navigation options based on whether path has params
- */
-export type NavigateOptions<Path extends string> =
-  HasParams<Path> extends true
-    ? {
-        params: PathParams<Path>;
-        queryParams?: Record<string, QueryParamValue>;
-        extras?: Omit<TypedNavigationExtras, "queryParams">;
-      }
-    : {
-        params?: never;
-        queryParams?: Record<string, QueryParamValue>;
-        extras?: Omit<TypedNavigationExtras, "queryParams">;
-      };
-
-/**
- * Simplified options for paths without params
- */
-export type SimpleNavigateOptions = {
-  queryParams?: Record<string, QueryParamValue>;
-  extras?: Omit<TypedNavigationExtras, "queryParams">;
-};
-
-// =============================================================================
-// Route Registry Interface
-// =============================================================================
-
-/**
- * Route path map - maps route identifiers to their full paths
+ * Maps all extracted paths to themselves (used for `keyof` extraction).
  */
 export type RoutePathMap<TRoutes extends ReadonlyArray<Route>> = {
   [K in ExtractAllPaths<TRoutes>]: K;
 };
 
-/**
- * Gets params type for a specific path
- */
-export type ParamsFor<Path extends string> = PathParams<Path>;
+// =============================================================================
+// Route Registry
+// =============================================================================
 
 /**
- * Registration result that provides type information
+ * A typed route registry that preserves route type information.
+ * Pass `registry.routes` to `provideRouter()`.
  */
 export interface RouteRegistry<TRoutes extends ReadonlyArray<Route>> {
-  /**
-   * The original routes array (pass to provideRouter)
-   */
   readonly routes: TRoutes;
-
-  /**
-   * All valid paths in the route configuration
-   */
-  readonly paths: RoutePathMap<TRoutes>;
-
-  /**
-   * Type helper to get params for a path (compile-time only)
-   */
-  readonly _params: <P extends ExtractAllPaths<TRoutes>>(path: P) => PathParams<P>;
 }
 
-// =============================================================================
-// Route Registration
-// =============================================================================
+/**
+ * Extracts all valid path strings from a route registry.
+ * Use this to constrain path parameters in navigation functions and directives.
+ */
+export type ValidPaths<TRegistry extends RouteRegistry<ReadonlyArray<Route>>> =
+  keyof RoutePathMap<TRegistry["routes"]> & string;
 
 /**
  * Registers routes and extracts type information.
- * Use this to wrap your routes array for type-safe navigation.
  *
  * @example
  * ```typescript
@@ -184,76 +86,58 @@ export interface RouteRegistry<TRoutes extends ReadonlyArray<Route>> {
  *   { path: 'users/:userId', component: UserComponent },
  * ] as const satisfies Routes;
  *
- * export const appRoutes = registerRoutes(routes);
+ * export const appRouter = registerRoutes(routes);
  *
  * // In app.config.ts
- * provideRouter(appRoutes.routes)
+ * provideRouter(appRouter.routes)
  * ```
  */
 export function registerRoutes<const TRoutes extends ReadonlyArray<Route>>(
   routes: TRoutes,
 ): RouteRegistry<TRoutes> {
-  // Build paths map at runtime for validation
-  const paths = buildPathsMap(routes as unknown as Routes);
-
-  return {
-    routes,
-    paths: paths as RoutePathMap<TRoutes>,
-    _params: (() => ({})) as RouteRegistry<TRoutes>["_params"],
-  };
+  return { routes };
 }
+
+// =============================================================================
+// Navigation Options
+// =============================================================================
 
 /**
- * Builds a map of all paths in the route configuration (runtime)
+ * Navigation options based on whether path has params.
+ * When the path contains `:param` segments, `params` is required.
  */
-function buildPathsMap(
-  routes: Routes,
-  prefix: string = "",
-  result: Record<string, string> = {},
-): Record<string, string> {
-  for (const route of routes) {
-    if (route.path !== undefined) {
-      const fullPath = prefix ? `${prefix}/${route.path}` : route.path;
-      const normalizedPath = fullPath.replace(/\/+/g, "/").replace(/^\//, "");
-
-      if (normalizedPath || prefix === "") {
-        result[normalizedPath || "/"] = normalizedPath || "/";
+export type NavigateOptions<Path extends string> =
+  HasParams<Path> extends true
+    ? {
+        params: PathParams<Path>;
+        queryParams?: Record<string, QueryParamValue>;
+        extras?: Omit<NavigationExtras, "queryParams">;
       }
-
-      if (route.children) {
-        buildPathsMap(route.children, fullPath, result);
-      }
-    }
-  }
-  return result;
-}
+    : {
+        params?: never;
+        queryParams?: Record<string, QueryParamValue>;
+        extras?: Omit<NavigationExtras, "queryParams">;
+      };
 
 // =============================================================================
 // Path Utilities
 // =============================================================================
 
 /**
- * Builds a URL path by substituting parameters
+ * Builds a URL path by substituting parameters.
  */
 export function buildPath<Path extends string>(path: Path, params: PathParams<Path>): string {
   let result: string = path;
 
-  if (params && typeof params === "object") {
-    for (const [key, value] of Object.entries(params)) {
-      result = result.replace(`:${key}`, encodeURIComponent(String(value)));
-    }
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replace(`:${key}`, encodeURIComponent(String(value)));
   }
 
-  // Ensure leading slash
-  if (!result.startsWith("/")) {
-    result = "/" + result;
-  }
-
-  return result;
+  return result.startsWith("/") ? result : "/" + result;
 }
 
 /**
- * Builds a full URL with query parameters
+ * Builds a full URL with query parameters.
  */
 export function buildUrl<Path extends string>(
   path: Path,
@@ -285,7 +169,7 @@ export function buildUrl<Path extends string>(
 }
 
 /**
- * Validates that all required params are provided
+ * Validates that all required params are provided.
  */
 export function validateParams<Path extends string>(
   path: Path,
@@ -303,7 +187,7 @@ export function validateParams<Path extends string>(
 }
 
 /**
- * Extracts parameter names from a path (runtime)
+ * Extracts parameter names from a path (runtime).
  */
 export function getParamNames(path: string): string[] {
   const matches = path.match(/:(\w+)/g);
